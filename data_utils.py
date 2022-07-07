@@ -131,13 +131,18 @@ class CustomDataset(data.Dataset):
         # user, item, label
         user_ = features[idx][0]
         item_ = features[idx][1]
-        if self.is_training:
-            neg_item = features[idx][2]
-        else:
+        try:
+            if self.is_training:
+                neg_item = features[idx][2]
+                neg_item = torch.LongTensor([neg_item])
+            else:
+                neg_item = -1
+                neg_item = torch.LongTensor([neg_item])
+        except:
             neg_item = -1
+            neg_item = torch.LongTensor([neg_item])
         user = torch.LongTensor([user_])
         item = torch.LongTensor([item_])
-        neg_item = torch.LongTensor([neg_item])
         label_main = torch.FloatTensor([labels[idx]])
 
         aux_user_ = torch.LongTensor([self.aux_user[user_]])
