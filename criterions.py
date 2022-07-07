@@ -28,3 +28,13 @@ class CustomLoss(nn.Module):
         else:
             loss = loss_main
         return loss
+
+class BPRLoss(nn.Module):
+    def __init__(self, lambda_main, lambda_user, lambda_item):
+        super().__init__()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, pos_preds, neg_preds):
+        distance = pos_preds - neg_preds
+        loss = torch.sum(torch.log((1+torch.exp(-distance))))
+        return loss

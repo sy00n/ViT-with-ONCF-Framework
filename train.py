@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from collections import namedtuple
 from importlib import import_module
+from turtle import pos
 
 import torch
 import torch.nn as nn
@@ -122,7 +123,11 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, top
         train_loader.dataset.ng_sample()
         for step, input in pbar:
             user = input['user_id'].to(device)
-            item = input['item_id'].to(device)
+            if model.model_name == 'ONCF':
+                pos_item = input['item_id'].to(device)
+                neg_item = input['neg_item'].to(device)
+            else:
+                item = input['item_id'].to(device)
             label = input['target_main'].to(device)
             
             user_aux = input['target_user_aux'].to(device)
@@ -130,17 +135,36 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, top
             
             optimizer.zero_grad()
             if fp16:
-                with autocast():
-                    outputs = model(user, item)
-                    loss = criterion(outputs['main'], outputs['user'], outputs['item'],
-                                     label, user_aux, item_aux)
+                if model.model_name == 'ONCF':
+                    with autocast():
+                        if epoch < 100:
+                            pos_preds = model(user, pos_item, True)
+                            neg_preds = model(user, neg_item, True)
+                        else:
+                            pos_preds = model(user, pos_item, False)
+                            neg_preds = model(user, neg_item, False)
+                        loss = criterion(pos_preds, neg_preds)
+                else:
+                    with autocast():
+                        outputs = model(user, item)
+                        loss = criterion(outputs['main'], outputs['user'], outputs['item'],
+                                        label, user_aux, item_aux)
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
             else:
-                outputs = model(user, item)
-                loss = criterion(outputs['main'], outputs['user'], outputs['item'],
+                if model.model_name == 'ONCF':
+                    if epoch < 100:
+                        pos_preds = model(user, pos_item, True)
+                        neg_preds = model(user, neg_item, True)
+                    else:
+                        pos_preds = model(user, pos_item, False)
+                        neg_preds = model(user, neg_item, False)
+                    loss = criterion(pos_preds, neg_preds)
+                else:
+                    outputs = model(user, item)
+                    loss = criterion(outputs['main'], outputs['user'], outputs['item'],
                                  label, user_aux, item_aux)
                 loss.backward()
                 optimizer.step()
@@ -185,7 +209,7 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, top
 
 def validation(epoch, num_epochs, model, data_loader, top_k, device):
     model.eval()
-    
+
     with torch.no_grad():
 
         HR = []
@@ -198,8 +222,12 @@ def validation(epoch, num_epochs, model, data_loader, top_k, device):
             #user_aux = input['target_user_aux'].to(device)
             #item_aux = input['target_item_aux'].to(device)
             
-            outputs = model(user, item)
-            predictions = outputs['main'].view(-1)
+            if model.model_name == 'ONCF':
+                outputs = model(user, item, False)
+                predictions = outputs.view(-1)
+            else:
+                outputs = model(user, item)
+                predictions = outputs['main'].view(-1)
 
             _, indices = torch.topk(predictions, top_k)
             recommends = torch.take(item, indices).cpu().numpy().tolist()
@@ -246,7 +274,6 @@ def main():
     # optimizer
     optimizer_module = getattr(import_module("torch.optim"), cfgs.optimizer.name)
     optimizer = optimizer_module(model.parameters(), **cfgs.optimizer.args._asdict())
-
 
     # scheduler
     try:

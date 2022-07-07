@@ -15,7 +15,7 @@ def load_all(data_path_train: str,
     data_path_test: 평가 데이터 경로
     """
     train_data = pd.read_csv(
-        data_path_train, dtype={0: np.int32, 1: np.int32})
+        data_path_train, dtype={0: np.int32, 1: np.int32, 2:np.int32})
 
     user_num = train_data['User_ID'].max() + 1
     item_num = train_data['MovieID'].max() + 1
@@ -131,8 +131,13 @@ class CustomDataset(data.Dataset):
         # user, item, label
         user_ = features[idx][0]
         item_ = features[idx][1]
+        if self.is_training:
+            neg_item = features[idx][2]
+        else:
+            neg_item = -1
         user = torch.LongTensor([user_])
         item = torch.LongTensor([item_])
+        neg_item = torch.LongTensor([neg_item])
         label_main = torch.FloatTensor([labels[idx]])
 
         aux_user_ = torch.LongTensor([self.aux_user[user_]])
@@ -140,6 +145,7 @@ class CustomDataset(data.Dataset):
 
         results = {'user_id':user,
                    'item_id':item, 
+                   'neg_item':neg_item,
                    'target_main':label_main,
                    'target_user_aux' : aux_user_,
                    'target_item_aux' : aux_item_}

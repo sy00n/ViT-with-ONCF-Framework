@@ -42,7 +42,7 @@ class Embedding(nn.Module):
         embed_user = torch.cat(embed_user, dim = 1)
         embed_item = torch.cat(embed_item, dim = 1)
 
-        return x, embed_user, embed_item
+        return x, embed_user, embed_item, embed_outer
 
 
 class MultiHeadAttention(nn.Module):
@@ -216,7 +216,7 @@ class ViT(nn.Module):
         
     def forward(self, user, item):
         b, _ = user.size()
-        x, embed_user, embed_item = self.emb(user, item)
+        x, embed_user, embed_item, embed_outer = self.emb(user, item)
         x = self.enc(x)
         x = self.cls(x)
 
@@ -241,3 +241,54 @@ class ViT(nn.Module):
             result['item'] = x_item
 
         return result
+
+class ONCF(nn.Module):
+    model_name='ONCF'
+    def __init__(self,
+                 user_num : int = 100,
+                 item_num : int = 100,
+                 emb_size : int = 256,
+                 factor_num : int = 128,
+                 patch_size : int = 4,
+                 depth : int = 12,
+                 aux_depth: int = 3,
+                 user_out : int = 100,
+                 item_out : int = 100,
+                 dropout : float = 0.1,
+                 **kwargs):
+        super().__init__()
+        self.emb_size = emb_size
+        self.emb = Embedding(user_num = user_num,
+                             item_num = item_num, 
+                             emb_size = emb_size, 
+                             factor_num = factor_num,
+                             patch_size = patch_size)
+        self.dropout = dropout
+        conv = [nn.Conv2d(emb_size, 32, kernel_size=2, stride=2), nn.ReLU()]
+        output_dim = factor_num//2
+        while  output_dim != 1:
+            conv.append(nn.Conv2d(32, 32, kernel_size=2, stride=2))
+            conv.append(nn.ReLU())
+            output_dim = output_dim // 2
+        self.conv = nn.Sequential(*conv)
+        self.cls = nn.Linear(32, 1)
+
+        self.affine = nn.Linear(emb_size*factor_num, 1)
+
+    def forward(self, user, item, is_pretrain):
+        b, _ = user.size()
+        x, embed_user, embed_item, embed_outer = self.emb(user, item)
+        
+        if is_pretrain:
+            x = torch.mul(embed_user, embed_item)
+            x = x.view(b, -1)
+            output = self.affine(x)
+        else:
+            x = self.conv(embed_outer)
+            x = x.view(b, -1)
+            x = nn.Dropout(self.dropout)(x)
+            output = self.cls(x)
+        return output
+
+
+                 
