@@ -155,7 +155,7 @@ def train(num_epochs, model, train_loader, val_loader, criterion, optimizer, top
                 scaler.update()
             else:
                 if model.model_name == 'ONCF':
-                    if epoch < 2:
+                    if epoch < 3:
                         pos_preds = model(user, pos_item, True)
                         neg_preds = model(user, neg_item, True)
                     else:
