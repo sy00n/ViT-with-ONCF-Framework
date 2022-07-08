@@ -136,10 +136,10 @@ class CustomDataset(data.Dataset):
                 neg_item = features[idx][2]
                 neg_item = torch.LongTensor([neg_item])
             else:
-                neg_item = -1
+                neg_item = features[idx][1]
                 neg_item = torch.LongTensor([neg_item])
         except:
-            neg_item = -1
+            neg_item = features[idx][1]
             neg_item = torch.LongTensor([neg_item])
         user = torch.LongTensor([user_])
         item = torch.LongTensor([item_])
