@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
                  dropout : float = 0.):
         super().__init__()
         self.emb_size = emb_size
-        self.num_heads = num_heads
+        self.num_heads = num_heads if emb_size >= 8 else emb_size
 
         self.keys = nn.Linear(emb_size, emb_size)
         self.queries = nn.Linear(emb_size, emb_size)
