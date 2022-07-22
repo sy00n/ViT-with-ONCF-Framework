@@ -18,7 +18,10 @@ def load_all(data_path_train: str,
         data_path_train, dtype={0: np.int32, 1: np.int32, 2:np.int32})
 
     user_num = train_data['User_ID'].max() + 1
-    item_num = train_data['MovieID'].max() + 1
+    try:
+        item_num = train_data['MovieID'].max() + 1
+    except:
+        item_num = train_data['ISBN'].max() + 1
 
     train_data = train_data.values.tolist()
 
@@ -49,7 +52,10 @@ def load_aux(data_path: str,
     id_col: "user" or "item"
     aux_col: auxiliary 정보가 있는 column명
     """
-    data = pd.read_csv(data_path, encoding='cp949')
+    try:
+        data = pd.read_csv(data_path, encoding='cp949')
+    except:
+        data = pd.read_csv(data_path)
     
     id2aux = dict(enumerate(data[aux_col].unique()))
     aux2id = {j:i for i, j in id2aux.items()}
@@ -83,10 +89,16 @@ class CustomDataset(data.Dataset):
         train_data, test_data, user_num, item_num, train_mat = load_all(data_path_main_train, data_path_main_test)
         
         # loading user auxiliary information data
-        self.aux_user = load_aux(data_path_aux_user, 'User_ID', 'aux')
+        try:
+            self.aux_user = load_aux(data_path_aux_user, 'User_ID', 'aux')
+        except:
+            self.aux_user = load_aux(data_path_aux_user, 'User_ID', 'Age')
 
         # loading user auxiliary information data
-        self.aux_item = load_aux(data_path_aux_item, 'MovieID', 'Genres')
+        try:
+            self.aux_item = load_aux(data_path_aux_item, 'MovieID', 'Genres')
+        except:
+            self.aux_item = load_aux(data_path_aux_item, 'ISBN', 'Publisher')
         
         # 학습 여부에 따라 features 변수에 알맞는 데이터 할당
         if is_training == True:
