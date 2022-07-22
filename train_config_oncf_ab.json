@@ -27,7 +27,7 @@
     "num_epochs": 150,
     "model": {"name" : "ONCF",
               "args" : {"user_num" : 19717,
-                        "item_num" : 256725,
+                        "item_num" : 256726,
                         "emb_size" : 1,
                         "factor_num" : 64,
                         "patch_size" : 2,

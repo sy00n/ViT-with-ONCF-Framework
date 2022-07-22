@@ -27,7 +27,7 @@
     "num_epochs": 10,
     "model": {"name" : "ViT",
               "args" : {"user_num" : 19717,
-                        "item_num" : 256725,
+                        "item_num" : 256726,
                         "emb_size" : 4,
                         "factor_num" : 4,
                         "patch_size" : 2,
